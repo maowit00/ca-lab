@@ -1,4 +1,4 @@
-    .globl _start
+.globl _start
 
 # ------------------------------------------------------------
 
@@ -9,12 +9,13 @@
     .endm
 
 # Print the unsigned number in \reg as decimal followed by a newline.
-# Uses the 16-byte buffer at sp. Clobbers a0-a2, t0-t5.
+# Uses the 32-byte buffer at sp (max 20 digits + newline on RV64).
+# Clobbers ra, a0-a2, a7, t0-t5. \reg must not be one of those.
     .macro print_num reg
         mv   a0, sp              # write position
         mv   a1, \reg            # value
         call print_dec           # returns a0 = next free position
-        li   t0, '\n'
+        li   t0, 10              # newline (ASCII 10)
         sb   t0, 0(a0)           # append newline
         addi a0, a0, 1
         sub  a1, a0, sp          # length = end - start
@@ -38,15 +39,22 @@ DIGITS:
 
 # Test string
 message:
-    .asciz "Hello, World"
+    .asciz "abc"
 
-message_length = . - message - 1 # excludes the null terminator (12)
+message_end = . - message
+
+message_length = message_end - 1
+
+# message_length = . - message - 1  # failed
+
+#    .equ message_length, . - message - 1  # failed
 
 # ------------------------------------------------------------
 
     .text
 
 print:                           # a0 = ptr, a1 = len
+    # clobbers a0-a2, a7
     mv   a2, a1                  # len -> a2
     mv   a1, a0                  # ptr -> a1
     li   a0, 1                   # fd = stdout
@@ -77,8 +85,7 @@ print_dec:
     add  a0, a0, a2              # a0 = one past the last digit
     mv   t4, a0                  # remember it as the return value
 
-write_digit:
-    remu t0, a1, t5              # t0 = a1 % 10 (lowest digit)
+2:  remu t0, a1, t5              # t0 = a1 % 10 (lowest digit)
     divu a1, a1, t5              # a1 /= 10 (discard that digit)
 
     add  t1, t3, t0              # &DIGITS[t0]
@@ -86,7 +93,7 @@ write_digit:
     addi a0, a0, -1              # move back one slot
     sb   t2, 0(a0)               # write the digit
     addi a2, a2, -1
-    bnez a2, write_digit         # loop until all digits are written
+    bnez a2, 2b                  # loop until all digits are written
 
     mv   a0, t4                  # return next free position
     ret
@@ -100,8 +107,8 @@ str_len:
 
     mv   t0, a0                  # t0 = cursor
 1:  lbu  t1, 0(t0)
-    addi t0, t0, 1               # increments first
-    beqz t1, 2f                  # null already counted
+    beqz t1, 2f                  # stop at the terminator, don't count it
+    addi t0, t0, 1
     j    1b
 2:  sub  a0, t0, a0              # length = cursor - start
     ret
@@ -109,7 +116,7 @@ str_len:
 # ------------------------------------------------------------
 
 _start:
-    addi sp, sp, -16             # reserve buffer (kept 16-byte aligned)
+    addi sp, sp, -32             # reserve buffer (kept 16-byte aligned)
 
     # Length computed at runtime (s1 survives the calls below)
     la   a0, message
@@ -124,16 +131,18 @@ _start:
     li   a1, message_length
     call print
 
-    li   t0, '\n'
+    li   t0, 10                  # newline
     sb   t0, 0(sp)
     mv   a0, sp
     li   a1, 1
     call print
 
-    # Print both lengths
+    # Print both lengths (both should be 12)
     print_num s1                 # from str_len
     print_num s2                 # from the location counter
 
-    addi sp, sp, 16              # release the stack buffer
+    addi sp, sp, 32              # release the stack buffer
 
     exit 0
+
+
