@@ -24,6 +24,15 @@
  */
         .global my_delay
 my_delay:
-        /** TODO: ADD YOUR OWN CODE */
+
+        # initialize count variables
+        lui     t0, SLEEP_1_MS
+        li      t1, SLEEP_MS
+        mul     t0, t1, t0
+
+        # Countdown loop
+        .loop:
+                add     t0, t0, -1
+                bnez     t0, .loop
 
         ret

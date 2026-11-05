@@ -22,11 +22,36 @@ main:                                                      # The location of the
         lw      a0, 0(s1)                                  # Load the word at s1[0], aka dereference s1 into a0
         jal     led_init                                   # Jump-and-link to function led_init
 
-        /** TODO: ADD YOUR OWN CODE */
+        # Initialize the counter in s2 register
+        li      s2, 0
+
         # 3. Loop forever and blink these LEDs
 .main_loop:                                                # This symbol starting with "." is by definition local
 
-        /** TODO: ADD YOUR OWN CODE */
+        andi    t0, s2, 1       # use lower bit of counter as the LED status
+
+        lw      a0, 0(s1)       # read call to set led
+
+        bnez    t0, .turn_led_on  # if 1 skip to turn led on
+
+        .turn_led_off:
+                call led_off
+                j .delay
+
+        .turn_led_on:
+                call led_on
+
+        .delay:
+                call my_delay
+
+        # - -- - -- - -- - --
+
+        ## Setup next loop
+
+        addi    s2, s2, 1        # increment counter
+        andi    s2, s2, 63       # mask lower bits to roll over for 64
+
+        # - -- - -- - -- - --
 
         j       .main_loop                                 # Loop forever
 
