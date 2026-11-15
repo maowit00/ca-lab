@@ -28,73 +28,92 @@ static timezone_def_t timezone_def[] = {
 };
 
 
-/** @TODO: You may need to add/change logic!!! */
-
+/********************** Time functions **********************/
 
 bool clock_time_inc_second(uint64_t tick_us)
 {
-    if ((tick_us - last_tick_us) < (1000*1000))
+    if ((tick_us - last_tick_us) < (1000 * 1000))
         return false;
-    last_tick_us += (1000*1000);
+
+    last_tick_us += (1000 * 1000);
+
     if (seconds++ == 59)
     {
+        seconds = 0;
+
         if (minutes++ == 59)
         {
+            minutes = 0;
+
             if (hours++ == 23)
                 hours = 0;
-            minutes = 0;
         }
-        seconds = 0;
     }
+
     return true;
 }
 
-void clock_time_set_utc(int hour, int minute, int second) {
-    assert (hour >= 0 && hour < 24);
-    assert (minute >= 0 && minute < 60);
-    assert (second >= 0 && second < 60);
+
+void clock_time_set_utc(int hour, int minute, int second)
+{
+    assert(hour >= 0 && hour < 24);
+    assert(minute >= 0 && minute < 60);
+    assert(second >= 0 && second < 60);
+
     hours = hour;
     minutes = minute;
     seconds = second;
 }
 
-void clock_time_get_utc(int * hour, int * minute, int * second) {
-    assert (hour != NULL);
-    assert (minute != NULL);
-    assert (second != NULL);
+
+void clock_time_get_utc(int *hour, int *minute, int *second)
+{
+    assert(hour != NULL);
+    assert(minute != NULL);
+    assert(second != NULL);
 
     *hour = hours;
     *minute = minutes;
     *second = seconds;
 }
 
-void clock_time_get_local(int * hour, int * minute, int * second) {
-    assert (hour != NULL);
-    assert (minute != NULL);
-    assert (second != NULL);
 
-    /** @TODO: You may need to add/change logic */
+void clock_time_get_local(int *hour, int *minute, int *second)
+{
+    assert(hour != NULL);
+    assert(minute != NULL);
+    assert(second != NULL);
 
-    *hour = (hours + timezone_offset_hours) % 24;
+    /* Calculate local time and handle negative timezone offsets */
+    *hour = (hours + timezone_offset_hours + 24) % 24;
+
     *minute = minutes;
     *second = seconds;
 }
 
-void clock_time_set_timezone(timezones_t tz) {
-    assert (tz >= 0 && tz < TIMEZONE_COUNT);
+
+void clock_time_set_timezone(timezones_t tz)
+{
+    assert(tz >= 0 && tz < TIMEZONE_COUNT);
 
     timezone_offset_hours = timezone_def[tz].hour_offset_UTC;
 }
 
 
-void clock_time_change_hour_utc(int change_value) {
-    assert (change_value >= 0 && change_value < 24);
+/********************** Joystick time editing **********************/
 
-    hours += change_value;
+void clock_time_change_hour_utc(int change_value)
+{
+    hours = (hours + change_value) % 24;
+
+    if (hours < 0)
+        hours += 24;
 }
 
-void clock_time_change_minute_utc(int change_value) {
-    assert (change_value >= 0 && change_value < 60);
 
-    minutes += change_value;
+void clock_time_change_minute_utc(int change_value)
+{
+    minutes = (minutes + change_value) % 60;
+
+    if (minutes < 0) minutes += 60;
 }
